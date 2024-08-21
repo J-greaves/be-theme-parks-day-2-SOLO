@@ -2,6 +2,7 @@ const { Connection } = require("pg");
 const db = require("./connection");
 const parkData = require("./data/parks");
 const format = require("pg-format");
+const rideData = require("./data/rides");
 
 function seed({ parks, rides, stalls }) {
   return db
@@ -33,12 +34,33 @@ function seed({ parks, rides, stalls }) {
           return [park.park_name, park.year_opened, park.annual_attendance];
         })
       );
-      return db.query(formattedQuery).then((result) => {
-        return result.rows;
-      });
+      return db.query(formattedQuery);
     })
     .then((data) => {
-      console.log(data, "<---passed row data");
+      const parks = data.rows;
+      //console.log(parks, "<-- parks");
+      const ridesToBeInserted = rideData.map((ride) => {
+        const parkToFind = ride.park_name;
+        //console.log(parkToFind, "<--parkToFind");
+        const correctPark = parks.find((park) => {
+          //console.log(park, "<--park in find");
+          return park.park_name === parkToFind;
+        });
+        return [
+          ride.ride_name,
+          ride.year_opened,
+          correctPark.park_id,
+          ride.votes,
+        ];
+      });
+      const formattedQuery = format(
+        `
+        INSERT INTO rides 
+        (ride_name, year_opened, park_id, votes) 
+        VALUES %L`,
+        ridesToBeInserted
+      );
+      return db.query(formattedQuery);
     });
 }
 
